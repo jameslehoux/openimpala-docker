@@ -35,10 +35,10 @@ RUN  /bin/bash -c "source /opt/rh/devtoolset-9/enable"
 RUN  yum groupinstall -y "Infiniband"
 RUN  yum install	   -y libibverbs-devel
   
-RUN  yum install -y gcc-gfortran wget git rh-python36 hostname
+RUN  yum install -y gcc-c++ gcc-gfortran wget git rh-python36 hostname
 RUN  yum --enablerepo=extras install -y epel-release
 RUN  scl enable rh-python36 bash
-RUN  yum install -y libtiff libtiff-devel python-pip boost169-devel.x86_64
+RUN  yum install -y libtiff libtiff-devel python-pip boost169-devel.x86_64 
 RUN  python -m pip --version
 RUN  python -m pip install --upgrade pip
 
