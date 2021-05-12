@@ -70,7 +70,7 @@ RUN    ldconfig /usr/local/lib
 RUN    wget https://cmake.org/files/v3.12/cmake-3.12.3.tar.gz --no-check-certificate && \
        tar zxvf cmake-3.* && \
        cd cmake-3.* && \
-       ./bootstrap --prefix=/usr/local && \
+       ./bootstrap && \
        make -j$(nproc) && \
        make install
 
