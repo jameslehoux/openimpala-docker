@@ -50,7 +50,7 @@ RUN   wget https://download.open-mpi.org/release/open-mpi/v${OPENMPI_VERSION%??}
       tar -xf openmpi-${OPENMPI_VERSION}.tar.gz && \
       cd openmpi-${OPENMPI_VERSION}/ && \
        ./configure && \
-          --prefix=/usr/local && \
+         # --prefix=/usr/local && \
           --enable-orterun-prefix-by-default && \
           --enable-mpirun-prefix-by-default && \
           --with-verbs && \
