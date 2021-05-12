@@ -41,7 +41,7 @@ RUN  scl enable rh-python36 bash
 RUN  yum install -y libtiff libtiff-devel python-pip boost169-devel.x86_64 
 RUN  python -m pip --version
 RUN  python -m pip install --upgrade pip
-
+RUN mkdir /usr/local/lib
 
     #
     # --- install OpenMPI
@@ -70,7 +70,7 @@ RUN    ldconfig /usr/local/lib
 RUN    wget https://cmake.org/files/v3.12/cmake-3.12.3.tar.gz --no-check-certificate && \
        tar zxvf cmake-3.* && \
        cd cmake-3.* && \
-       ./bootstrap && \
+       ./bootstrap --prefix=/usr/local && \
        make -j$(nproc) && \
        make install
 
