@@ -41,17 +41,15 @@ RUN  scl enable rh-python36 bash
 RUN  yum install -y libtiff libtiff-devel python-pip boost169-devel.x86_64 
 RUN  python -m pip --version
 RUN  python -m pip install --upgrade pip
-RUN  chmod 777 /usr/local 
 
     #
     # --- install OpenMPI
 ENV   OPENMPI_VERSION=3.1.4
 RUN   wget https://download.open-mpi.org/release/open-mpi/v${OPENMPI_VERSION%??}/openmpi-${OPENMPI_VERSION}.tar.gz --no-check-certificate && \
-      tar -xf openmpi-${OPENMPI_VERSION}.tar.gz
-RUN   ls
-RUN   cd openmpi-${OPENMPI_VERSION}/  && \
+      tar -xf openmpi-${OPENMPI_VERSION}.tar.gz &&\
+      cd openmpi-${OPENMPI_VERSION}/  && \
         ./configure && \
-          --prefix=/opt && \
+          --prefix=/usr/local && \
           --enable-orterun-prefix-by-default && \
           --enable-mpirun-prefix-by-default && \
           --with-verbs && \
