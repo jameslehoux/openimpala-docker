@@ -56,7 +56,7 @@ RUN       ./configure \
 RUN   make && \
       make install
 
-WORKDIR \
+WORKDIR /
     # Note: "--with-verbs" is not essential, as ibverbs support is picked up automatically
 RUN  rm -fr openmpi-${OPENMPI_VERSION}*
 
