@@ -81,8 +81,9 @@ WORKDIR /src
     # --- install HDF5
 ENV    HDF5_VERSION=1.12.0
 RUN    wget https://support.hdfgroup.org/ftp/HDF5/releases/hdf5-1.12/hdf5-${HDF5_VERSION}/src/hdf5-${HDF5_VERSION}.tar.gz --no-check-certificate && \
-       tar -xf hdf5-${HDF5_VERSION}.tar.gz && cd hdf5-${HDF5_VERSION} && \
-       CFLAGS="-O3 -mavx2" CXXFLAGS=${CFLAGS} FCFLAGS=${CFLAGS} && \
+       tar -xf hdf5-${HDF5_VERSION}.tar.gz 
+WORKDIR hdf5-${HDF5_VERSION} 
+RUN    CFLAGS="-O3 -mavx2" CXXFLAGS=${CFLAGS} FCFLAGS=${CFLAGS} && \
        CC=`type -p mpicc` FC=`type -p mpif90` && \
            ./configure && \
            --prefix=/opt/hdf5-parallel/${HDF5_VERSION} && \
@@ -93,6 +94,7 @@ RUN    wget https://support.hdfgroup.org/ftp/HDF5/releases/hdf5-1.12/hdf5-${HDF5
        make && \
        make install
 
+WORKDIR /src
 RUN    rm -fr hdf5-${HDF5_VERSION}/ hdf5-${HDF5_VERSION}.tar.gz
 
 ENV    ROOT_HDF5=/opt/hdf5-parallel/1.12.0
@@ -106,27 +108,27 @@ RUN    python -m pip install conan && \
        conan config set general.revisions_enabled=True && \
        conan remote add ecdc https://artifactoryconan.esss.dk/artifactory/api/conan/ecdc && \
        conan remote add bincrafters https://bincrafters.jfrog.io/artifactory/api/conan/public-conan && \
-       git clone -b v0.4.0 --single-branch https://github.com/ess-dmsc/h5cpp.git && \
-       cd h5cpp && \
-       mkdir build && \
-       cd build && \
-       cmake .. && \
+       git clone -b v0.4.0 --single-branch https://github.com/ess-dmsc/h5cpp.git 
+WORKDIR   h5cpp/build
+RUN    cmake .. && \
        make && \  
        make install
 
+WORKDIR /src
     #
     # --- install amrex
-RUN    git clone -b 21.02 --single-branch https://github.com/AMReX-Codes/amrex.git && \
-       cd /src/amrex && \
-       ./configure --with-mpi yes --with-omp yes --enable-eb yes && \
+RUN    git clone -b 21.02 --single-branch https://github.com/AMReX-Codes/amrex.git
+WORKDIR /src/amrex
+RUN    ./configure --with-mpi yes --with-omp yes --enable-eb yes && \
        make && \
        make install
-
+       
+WORKDIR /src
     #
     # --- install hypre
-RUN    git clone https://github.com/hypre-space/hypre.git && \
-       cd hypre/src && \
-       ./configure && \
+RUN    git clone https://github.com/hypre-space/hypre.git
+WORKDIR hypre/src 
+RUN       ./configure && \
        make && \
        make install
 
@@ -143,9 +145,9 @@ RUN    rm -rf /src
     
     #
     # --- install OpenImpala
-RUN    git clone https://github.com/kramergroup/openImpala.git && \
-       cd openImpala && \
-       make
+RUN    git clone https://github.com/kramergroup/openImpala.git
+WORKDIR openImpala 
+RUN       make
 
 #============================================================#
 # environment: PATH, LD_LIBRARY_PATH, etc.
