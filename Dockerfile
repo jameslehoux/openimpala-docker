@@ -46,9 +46,9 @@ RUN  python -m pip install --upgrade pip
     # --- install OpenMPI
 ENV   OPENMPI_VERSION=3.1.4
 RUN   wget https://download.open-mpi.org/release/open-mpi/v${OPENMPI_VERSION%??}/openmpi-${OPENMPI_VERSION}.tar.gz --no-check-certificate && \
-      tar -xf openmpi-${OPENMPI_VERSION}.tar.gz &&\
-      cd openmpi-${OPENMPI_VERSION}/  
-RUN        ./configure \
+      tar -xf openmpi-${OPENMPI_VERSION}.tar.gz
+WORKDIR    cd openmpi-${OPENMPI_VERSION}/ 
+RUN       ./configure \
           --prefix=/usr/local \
           --enable-orterun-prefix-by-default \
           --enable-mpirun-prefix-by-default  \
@@ -56,6 +56,7 @@ RUN        ./configure \
 RUN   make && \
       make install
 
+WORKDIR \
     # Note: "--with-verbs" is not essential, as ibverbs support is picked up automatically
 RUN  rm -fr openmpi-${OPENMPI_VERSION}*
 
