@@ -47,7 +47,8 @@ RUN  chmod 777 /usr/local
     # --- install OpenMPI
 ENV   OPENMPI_VERSION=3.1.4
 RUN   wget https://download.open-mpi.org/release/open-mpi/v${OPENMPI_VERSION%??}/openmpi-${OPENMPI_VERSION}.tar.gz --no-check-certificate && \
-      tar -xf openmpi-${OPENMPI_VERSION}.tar.gz 
+      tar -xf openmpi-${OPENMPI_VERSION}.tar.gz
+RUN   ls
 RUN   cd openmpi-${OPENMPI_VERSION}/  && \
         ./configure && \
           --prefix=/opt && \
