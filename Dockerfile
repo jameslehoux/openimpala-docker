@@ -41,7 +41,6 @@ RUN  scl enable rh-python36 bash
 RUN  yum install -y libtiff libtiff-devel python-pip boost169-devel.x86_64 
 RUN  python -m pip --version
 RUN  python -m pip install --upgrade pip
-RUN mkdir /usr/local/lib
 
     #
     # --- install OpenMPI
