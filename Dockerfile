@@ -85,13 +85,13 @@ RUN    wget https://support.hdfgroup.org/ftp/HDF5/releases/hdf5-1.12/hdf5-${HDF5
 WORKDIR hdf5-${HDF5_VERSION} 
 RUN    CFLAGS="-O3 -mavx2" CXXFLAGS=${CFLAGS} FCFLAGS=${CFLAGS} && \
        CC=`type -p mpicc` FC=`type -p mpif90` && \
-           ./configure && \
-           --prefix=/opt/hdf5-parallel/${HDF5_VERSION} && \
-           --enable-fortran && \
-           --enable-fortran2003 && \
-           --enable-parallel && \
-           --disable-tests && \
-       make && \
+           ./configure  \
+           --prefix=/opt/hdf5-parallel/${HDF5_VERSION}  \
+           --enable-fortran  \
+           --enable-fortran2003  \
+           --enable-parallel  \
+           --disable-tests  
+RUN    make && \
        make install
 
 WORKDIR /src
