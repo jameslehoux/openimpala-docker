@@ -104,8 +104,8 @@ ENV    ROOT_HDF5=/opt/hdf5-parallel/1.12.0
 ENV    CC=/opt/rh/devtoolset-9/root/usr/bin/gcc
 ENV    CPP=/opt/rh/devtoolset-9/root/usr/bin/cpp
 ENV    CXX=/opt/rh/devtoolset-9/root/usr/bin/c++
-RUN    python -m pip install conan && \
-       conan config set general.revisions_enabled=True && \
+RUN    python -m pip install conan 
+RUN    conan config set general.revisions_enabled=True && \
        conan remote add ecdc https://artifactoryconan.esss.dk/artifactory/api/conan/ecdc && \
        conan remote add bincrafters https://bincrafters.jfrog.io/artifactory/api/conan/public-conan && \
        git clone -b v0.4.0 --single-branch https://github.com/ess-dmsc/h5cpp.git 
