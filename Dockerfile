@@ -135,13 +135,13 @@ RUN       ./configure && \
        make install
 
 WORKDIR /
-COPY /src/amrex/tmp_install_dir/include /usr/include/amrex
-COPY /src/amrex/tmp_install_dir/lib/* /usr/lib/
-COPY /src/hypre/src/hypre/include /usr/include/hypre
-COPY /src/hypre/src/hypre/lib/* /usr/lib
-COPY /src/h5cpp/build/lib/* /usr/lib
-COPY /src/hdf5-1.12.0/src/ /usr/include/hdf5
-COPY /src/hdf5-1.12.0/hl/src/* /usr/include/hdf5
+COPY src/amrex/tmp_install_dir/include usr/include/amrex
+COPY src/amrex/tmp_install_dir/lib/* usr/lib/
+COPY src/hypre/src/hypre/include usr/include/hypre
+COPY src/hypre/src/hypre/lib/* usr/lib
+COPY src/h5cpp/build/lib/* usr/lib
+COPY src/hdf5-1.12.0/src/ usr/include/hdf5
+COPY src/hdf5-1.12.0/hl/src/* usr/include/hdf5
 
 RUN    rm -rf /src
     
