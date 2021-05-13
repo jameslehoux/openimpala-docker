@@ -39,8 +39,6 @@ RUN  yum install -y gcc-c++ gcc-gfortran wget git rh-python36 hostname
 RUN  yum --enablerepo=extras install -y epel-release
 RUN  scl enable rh-python36 bash
 RUN  yum install -y libtiff libtiff-devel python-pip boost169-devel.x86_64 
-RUN  python -m pip --version
-RUN  python -m pip install --upgrade pip
 
     #
     # --- install OpenMPI
@@ -104,6 +102,8 @@ ENV    ROOT_HDF5=/opt/hdf5-parallel/1.12.0
 ENV    CC=/opt/rh/devtoolset-9/root/usr/bin/gcc
 ENV    CPP=/opt/rh/devtoolset-9/root/usr/bin/cpp
 ENV    CXX=/opt/rh/devtoolset-9/root/usr/bin/c++
+RUN    python -m pip --version
+RUN    python -m pip install --upgrade pip
 RUN    python -m pip install conan 
 RUN    conan config set general.revisions_enabled=True && \
        conan remote add ecdc https://artifactoryconan.esss.dk/artifactory/api/conan/ecdc && \
