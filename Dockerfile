@@ -103,9 +103,9 @@ ENV    CC=/opt/rh/devtoolset-9/root/usr/bin/gcc
 ENV    CPP=/opt/rh/devtoolset-9/root/usr/bin/cpp
 ENV    CXX=/opt/rh/devtoolset-9/root/usr/bin/c++
 RUN    scl enable rh-python36 bash && \
-       python -m pip --version && \
-       python -m pip install --upgrade pip && \
-       python -m pip install conan 
+       python3 -m pip --version && \
+       python3 -m pip install --upgrade pip && \
+       python3 -m pip install conan 
 RUN    conan config set general.revisions_enabled=True && \
        conan remote add ecdc https://artifactoryconan.esss.dk/artifactory/api/conan/ecdc && \
        conan remote add bincrafters https://bincrafters.jfrog.io/artifactory/api/conan/public-conan && \
