@@ -107,7 +107,7 @@ ENV    CXX=/opt/rh/devtoolset-9/root/usr/bin/c++
 RUN    yum install -y python36-devel
 RUN    yum install -y python36-setuptools
 RUN    easy_install-3.6 pip && \
-       python -m pip3 install conan 
+       python -m pip install conan 
 RUN    conan config set general.revisions_enabled=True && \
        conan remote add ecdc https://artifactoryconan.esss.dk/artifactory/api/conan/ecdc && \
        conan remote add bincrafters https://bincrafters.jfrog.io/artifactory/api/conan/public-conan && \
