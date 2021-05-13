@@ -123,6 +123,7 @@ WORKDIR /src/amrex
 RUN    ./configure --with-mpi yes --with-omp yes --enable-eb yes && \
        make && \
        make install
+RUN ls
        
 WORKDIR /src
     #
