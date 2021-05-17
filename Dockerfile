@@ -123,7 +123,10 @@ WORKDIR /src/amrex
 RUN    ./configure --with-mpi yes --with-omp yes --enable-eb yes && \
        make && \
        make install
-       
+
+COPY src/amrex/tmp_install_dir/include usr/include/amrex
+COPY src/amrex/tmp_install_dir/lib/* usr/lib/
+
 WORKDIR /src
     #
     # --- install hypre
@@ -134,8 +137,7 @@ RUN       ./configure && \
        make install
 
 WORKDIR /
-COPY src/amrex/tmp_install_dir/include usr/include/amrex
-COPY src/amrex/tmp_install_dir/lib/* usr/lib/
+
 COPY src/hypre/src/hypre/include usr/include/hypre
 COPY src/hypre/src/hypre/lib/* usr/lib
 COPY src/h5cpp/build/lib/* usr/lib
