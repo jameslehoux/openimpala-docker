@@ -90,7 +90,9 @@ RUN    CFLAGS="-O3 -mavx2" CXXFLAGS=${CFLAGS} FCFLAGS=${CFLAGS} && \
            --enable-parallel  \
            --disable-tests  
 RUN    make && \
-       make install
+       make install && \
+       cp -r /src/hdf5-1.12.0/src/ /usr/include/hdf5 && \
+       cp -r /src/hdf5-1.12.0/hl/src/* /usr/include/hdf5
 
 WORKDIR /src
 RUN    rm -fr hdf5-${HDF5_VERSION}/ hdf5-${HDF5_VERSION}.tar.gz
@@ -113,7 +115,8 @@ RUN    conan config set general.revisions_enabled=True && \
 WORKDIR   h5cpp/build
 RUN    cmake .. && \
        make && \  
-       make install
+       make install && \
+       cp -r /src/h5cpp/build/lib/* /usr/lib
 
 WORKDIR /src
     #
@@ -122,7 +125,9 @@ RUN    git clone -b 21.02 --single-branch https://github.com/AMReX-Codes/amrex.g
 WORKDIR /src/amrex
 RUN    ./configure --with-mpi yes --with-omp yes --enable-eb yes && \
        make && \
-       make install
+       make install && \
+       cp -r /src/amrex/tmp_install_dir/include /usr/include/amrex && \
+       cp -r /src/amrex/tmp_install_dir/lib/* /usr/lib/
 
 
 WORKDIR /src
@@ -132,15 +137,19 @@ RUN    git clone https://github.com/hypre-space/hypre.git
 WORKDIR hypre/src 
 RUN       ./configure && \
        make && \
-       make install
+       make install && \
+       cp -r /src/hypre/src/hypre/include /usr/include/hypre && \
+       cp -r /src/hypre/src/hypre/lib/* /usr/lib
 
 WORKDIR /
+  
+RUN    rm -rf /src
 
-    
     #
     # --- install OpenImpala
 RUN    git clone https://github.com/kramergroup/openImpala.git
 WORKDIR openImpala 
+RUN    make
 
 
 #============================================================#
