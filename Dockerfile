@@ -151,7 +151,6 @@ RUN    git clone https://github.com/kramergroup/openImpala.git
 WORKDIR openImpala 
 RUN    make
 
-
 #============================================================#
 # environment: PATH, LD_LIBRARY_PATH, etc.
 #============================================================#
