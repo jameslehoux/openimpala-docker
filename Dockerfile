@@ -1,7 +1,7 @@
 FROM centos:7
   
 #    Container that contains all libraries needed to run OpenImpala
-#      * Singularity integration with and use of MPI
+#      * Docker integration
 #      * the steps necessary to enable MPI messaging over IB
 #      * Build of AMReX libraries
 #      * Build of Hypre solver
@@ -12,11 +12,6 @@ FROM centos:7
 #    Note: the original recipe for enabling MPI messaging over IB is
 #      * https://community.mellanox.com/docs/DOC-2431
 #      * This recipe is adapted from M. Dutas hpc-mpi-benchmarks.sif
-
-#    Usage: functions are installed as Singularity apps.  A few useful commands
-#      * singularity apps container.simg
-#      * singularity help --app diffusion container.simg
-#      * singularity run --app diffusion container.simg
 
 
 #    maintainer James Le Houx
@@ -153,23 +148,6 @@ RUN    make
 
 WORKDIR /
 
-# install the notebook package
-RUN python3 -m pip install --no-cache --upgrade pip && \
-    python3 -m pip install --no-cache notebook
-    
-# create user with a home directory
-ARG NB_USER
-ARG NB_UID
-ENV USER ${NB_USER}
-ENV HOME /home/${NB_USER}
-
-RUN adduser --disabled-login \
-    --gecos "Default user" \
-    --uid ${NB_UID} \
-    ${NB_USER}
-WORKDIR ${HOME}
-USER ${USER}
-
 #============================================================#
 # environment: PATH, LD_LIBRARY_PATH, etc.
 #============================================================#
@@ -185,9 +163,4 @@ ENV LD_LIBRARY_PATH=/opt/rh/devtoolset-9/root/usr/lib64/dyninst:/opt/rh/devtools
 ENV LD_LIBRARY_PATH=/usr/local/lib64:/usr/lib:${LD_LIBRARY_PATH}
   
 ENV LC_ALL=C
-
-
-#============================================================#
-# script to run with command "singularity run"
-#============================================================#
 
