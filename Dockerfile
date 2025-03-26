@@ -1,166 +1,200 @@
-FROM centos:7
-  
-#    Container that contains all libraries needed to run OpenImpala
-#      * Docker integration
-#      * the steps necessary to enable MPI messaging over IB
-#      * Build of AMReX libraries
-#      * Build of Hypre solver
-#      * HDF5 1.12.0
-#      * HDF5 C++ API
-#      * CMake
-      
-#    Note: the original recipe for enabling MPI messaging over IB is
-#      * https://community.mellanox.com/docs/DOC-2431
-#      * This recipe is adapted from M. Dutas hpc-mpi-benchmarks.sif
+Certainly. Here is the complete Dockerfile, incorporating the change to build from the working branch of OpenImpala by default.
 
+(Current as of Wednesday, March 26, 2025, 12:14 AM GMT, Oxford)
 
-#    maintainer James Le Houx
-#    version 1.5
+Dockerfile
 
-  #
-  # --- install compilers
-WORKDIR /
-RUN  yum install -y centos-release-scl-rh
-RUN  yum install -y devtoolset-9
+# Stage 1: Build dependencies and OpenImpala
+# Use Rocky Linux 8 as the base
+ARG ROCKY_VERSION=8
+FROM rockylinux:${ROCKY_VERSION} AS builder
 
-RUN  /bin/bash -c "source /opt/rh/devtoolset-9/enable"
+# Define arguments for versions (can be overridden during build)
+ARG CMAKE_VERSION=3.28.3
+ARG OPENMPI_VERSION=4.1.6
+ARG HDF5_VERSION=1.12.3
+ARG AMREX_VERSION=23.11
+ARG HYPRE_VERSION=v2.30.0
+ARG OPENIMPALA_REPO=https://github.com/kramergroup/openImpala.git # <-- VERIFY URL
+ARG OPENIMPALA_BRANCH=working # <-- Default branch set to 'working'
 
-  #
-  # --- install verbs
-RUN  yum groupinstall -y "Infiniband"
-RUN  yum install	   -y libibverbs-devel
-  
-RUN  yum install -y gcc-c++ gcc-gfortran wget git rh-python36 hostname
-RUN  yum --enablerepo=extras install -y epel-release
-RUN  scl enable rh-python36 bash
-RUN  yum install -y libtiff libtiff-devel python-pip boost169-devel.x86_64 
+# Set frontend to noninteractive (less relevant for dnf, but good practice)
+ENV DEBIAN_FRONTEND=noninteractive
 
-    #
-    # --- install OpenMPI
-ENV   OPENMPI_VERSION=3.1.4
-RUN   wget https://download.open-mpi.org/release/open-mpi/v${OPENMPI_VERSION%??}/openmpi-${OPENMPI_VERSION}.tar.gz --no-check-certificate && \
-      tar -xf openmpi-${OPENMPI_VERSION}.tar.gz
-WORKDIR   openmpi-${OPENMPI_VERSION}/ 
-RUN       ./configure \
-          --prefix=/usr/local \
-          --enable-orterun-prefix-by-default \
-          --enable-mpirun-prefix-by-default  \
-          --with-verbs 
-RUN   make && \
-      make install
+# Install build tools, compilers, and essential dependencies
+RUN dnf update -y && \
+    dnf install -y dnf-utils && \
+    dnf config-manager --set-enabled powertools && \
+    dnf install -y epel-release && \
+    dnf update -y && \
+    dnf install -y \
+        gcc gcc-gfortran gcc-c++ make \
+        wget git patch \
+        python3 python3-pip \
+        hostname \
+        infiniband-diags libibverbs-devel \
+        libtiff-devel boost-devel \
+        which ca-certificates && \
+    dnf clean all
 
-WORKDIR /
-    # Note: "--with-verbs" is not essential, as ibverbs support is picked up automatically
-RUN  rm -fr openmpi-${OPENMPI_VERSION}*
+# --- Install CMake (Recent Version) ---
+WORKDIR /tmp/build_src
+ARG CMAKE_VERSION
+ENV CMAKE_INSTALL_PREFIX=/opt/cmake/${CMAKE_VERSION}
+RUN wget https://github.com/Kitware/CMake/releases/download/v${CMAKE_VERSION}/cmake-${CMAKE_VERSION}-linux-x86_64.tar.gz && \
+    mkdir -p ${CMAKE_INSTALL_PREFIX} && \
+    tar -xzf cmake-${CMAKE_VERSION}-linux-x86_64.tar.gz --strip-components=1 -C ${CMAKE_INSTALL_PREFIX}
+# Add CMake to PATH for this stage
+ENV PATH=${CMAKE_INSTALL_PREFIX}/bin:${PATH}
+RUN cmake --version
 
-    #
-    # --- make OpenMPI libraries /usr/local/lib available
-RUN    ldconfig
-RUN    ldconfig /usr/local/lib
-    
-    #
-    # --- install cmake
-RUN    wget https://cmake.org/files/v3.12/cmake-3.12.3.tar.gz --no-check-certificate && \
-       tar zxvf cmake-3.*
-WORKDIR cmake-3.12.3
-RUN     ./bootstrap --prefix=/usr/local && \
-       make -j$(nproc) && \
-       make install
+# --- Install OpenMPI (Recent Version) ---
+ARG OPENMPI_VERSION
+ENV OPENMPI_INSTALL_PREFIX=/usr/local
+RUN wget https://download.open-mpi.org/release/open-mpi/v${OPENMPI_VERSION%.*}/openmpi-${OPENMPI_VERSION}.tar.gz --no-check-certificate && \
+    tar -xzf openmpi-${OPENMPI_VERSION}.tar.gz && \
+    cd openmpi-${OPENMPI_VERSION} && \
+    ./configure \
+       --prefix=${OPENMPI_INSTALL_PREFIX} \
+       --enable-orterun-prefix-by-default \
+       --enable-mpirun-prefix-by-default \
+       --with-verbs \
+       --enable-shared \
+       --enable-static=no && \
+    make -j$(nproc) install && \
+    cd .. && \
+    rm -rf openmpi-${OPENMPI_VERSION}* && \
+    ldconfig # Update library cache
 
+# --- Install HDF5 (with Parallel, Fortran, C++) ---
+ARG HDF5_VERSION
+ENV HDF5_INSTALL_PREFIX=/opt/hdf5/${HDF5_VERSION}
+RUN wget https://support.hdfgroup.org/ftp/HDF5/releases/hdf5-${HDF5_VERSION%.*}/hdf5-${HDF5_VERSION}/src/hdf5-${HDF5_VERSION}.tar.gz --no-check-certificate && \
+    tar -xzf hdf5-${HDF5_VERSION}.tar.gz && \
+    cd hdf5-${HDF5_VERSION} && \
+    export CFLAGS="-O3 -march=native" && export CXXFLAGS="${CFLAGS}" && export FCFLAGS="${CFLAGS}" && \
+    CC=mpicc CXX=mpicxx FC=mpif90 ./configure \
+        --prefix=${HDF5_INSTALL_PREFIX} \
+        --enable-parallel \
+        --enable-fortran \
+        --enable-fortran2003 \
+        --enable-cxx \
+        --enable-shared \
+        --disable-static && \
+    make -j$(nproc) install && \
+    cd .. && \
+    rm -rf hdf5-${HDF5_VERSION}*
 
-WORKDIR /src
+# --- Install AMReX (Recent Stable Tag using CMake) ---
+ARG AMREX_VERSION
+ENV AMREX_INSTALL_PREFIX=/opt/amrex/${AMREX_VERSION}
+RUN git clone --depth 1 --branch ${AMREX_VERSION} https://github.com/AMReX-Codes/amrex.git && \
+    cd amrex && \
+    mkdir build && cd build && \
+    cmake .. \
+        -DCMAKE_INSTALL_PREFIX=${AMREX_INSTALL_PREFIX} \
+        -DCMAKE_BUILD_TYPE=Release \
+        -DAMReX_MPI=ON \
+        -DAMReX_OMP=ON \
+        -DAMReX_EB=ON \
+        -DCMAKE_CXX_COMPILER=mpicxx \
+        -DCMAKE_C_COMPILER=mpicc \
+        -DCMAKE_Fortran_COMPILER=mpif90 \
+        -DCMAKE_CXX_FLAGS="-O3 -march=native" \
+        -DCMAKE_C_FLAGS="-O3 -march=native" \
+        -DCMAKE_Fortran_FLAGS="-O3 -march=native" && \
+    make -j$(nproc) install && \
+    cd ../.. && \
+    rm -rf amrex
 
-    #
-    # --- install HDF5
-ENV    HDF5_VERSION=1.12.0
-RUN    wget https://support.hdfgroup.org/ftp/HDF5/releases/hdf5-1.12/hdf5-${HDF5_VERSION}/src/hdf5-${HDF5_VERSION}.tar.gz --no-check-certificate && \
-       tar -xf hdf5-${HDF5_VERSION}.tar.gz 
-WORKDIR hdf5-${HDF5_VERSION} 
-RUN    CFLAGS="-O3 -mavx2" CXXFLAGS=${CFLAGS} FCFLAGS=${CFLAGS} && \
-       CC=`type -p mpicc` FC=`type -p mpif90` && \
-           ./configure  \
-           --prefix=/opt/hdf5-parallel/${HDF5_VERSION}  \
-           --enable-fortran  \
-           --enable-fortran2003  \
-           --enable-parallel  \
-           --disable-tests  
-RUN    make && \
-       make install && \
-       cp -r /src/hdf5-1.12.0/src/ /usr/include/hdf5 && \
-       cp -r /src/hdf5-1.12.0/hl/src/* /usr/include/hdf5
+# --- Install HYPRE (Recent Stable Tag) ---
+ARG HYPRE_VERSION
+ENV HYPRE_INSTALL_PREFIX=/opt/hypre/${HYPRE_VERSION}
+RUN git clone --depth 1 --branch ${HYPRE_VERSION} https://github.com/hypre-space/hypre.git && \
+    cd hypre/src && \
+    CC=mpicc CXX=mpicxx ./configure \
+        --prefix=${HYPRE_INSTALL_PREFIX} \
+        --with-MPI \
+        --enable-shared \
+        CFLAGS="-O3 -march=native" \
+        CXXFLAGS="-O3 -march=native" && \
+    make -j$(nproc) install && \
+    cd ../.. && \
+    rm -rf hypre
 
-WORKDIR /src
-RUN    rm -fr hdf5-${HDF5_VERSION}/ hdf5-${HDF5_VERSION}.tar.gz
+# --- Build OpenImpala (from specified branch) ---
+WORKDIR /opt
+ARG OPENIMPALA_REPO
+ARG OPENIMPALA_BRANCH # Will use 'working' by default (set above), or override via --build-arg
+# Set env vars needed for build
+ENV HDF5_HOME=/opt/hdf5/${HDF5_VERSION}
+ENV AMREX_HOME=/opt/amrex/${AMREX_VERSION}
+ENV HYPRE_HOME=/opt/hypre/${HYPRE_VERSION}
+ENV LD_LIBRARY_PATH=${HDF5_HOME}/lib:${AMREX_HOME}/lib:${HYPRE_HOME}/lib:/usr/local/lib:${LD_LIBRARY_PATH}
+RUN echo "Cloning OpenImpala branch: ${OPENIMPALA_BRANCH} from ${OPENIMPALA_REPO}" && \
+    git clone --depth 1 --branch ${OPENIMPALA_BRANCH} ${OPENIMPALA_REPO} openImpala && \
+    cd openImpala && \
+    echo "Building OpenImpala..." && \
+    # Assuming 'make' is still the primary build method.
+    # If using CMake: mkdir build && cd build && cmake .. && make -j$(nproc) install
+    make -j$(nproc) && \
+    # Clean up downloaded sources for dependencies
+    rm -rf /tmp/build_src
 
-ENV    ROOT_HDF5=/opt/hdf5-parallel/1.12.0
+#-------------------------------------------------------------------------------
+# Stage 2: Final runtime image
+#-------------------------------------------------------------------------------
+FROM rockylinux:${ROCKY_VERSION} AS final
 
-    #
-    # --- install HDF5 C++ api
-ENV    CC=/opt/rh/devtoolset-9/root/usr/bin/gcc
-ENV    CPP=/opt/rh/devtoolset-9/root/usr/bin/cpp
-ENV    CXX=/opt/rh/devtoolset-9/root/usr/bin/c++
-RUN    scl enable rh-python36 bash && \
-       python3 -m pip --version && \
-       python3 -m pip install --upgrade pip && \
-       python3 -m pip install conan 
-RUN    conan config set general.revisions_enabled=True && \
-       conan remote add ecdc https://artifactoryconan.esss.dk/artifactory/api/conan/ecdc && \
-       conan remote add bincrafters https://bincrafters.jfrog.io/artifactory/api/conan/public-conan && \
-       git clone -b v0.4.0 --single-branch https://github.com/ess-dmsc/h5cpp.git 
-WORKDIR   h5cpp/build
-RUN    cmake .. && \
-       make && \  
-       make install && \
-       cp -r /src/h5cpp/build/lib/* /usr/lib
+# Install only runtime dependencies
+RUN dnf update -y && \
+    dnf install -y \
+        libibverbs \
+        libtiff \
+        boost-libs \
+        python3 && \
+    dnf clean all
 
-WORKDIR /src
-    #
-    # --- install amrex
-RUN    git clone -b 21.02 --single-branch https://github.com/AMReX-Codes/amrex.git
-WORKDIR /src/amrex
-RUN    ./configure --with-mpi yes --with-omp yes --enable-eb yes && \
-       make && \
-       make install && \
-       cp -r /src/amrex/tmp_install_dir/include /usr/include/amrex && \
-       cp -r /src/amrex/tmp_install_dir/lib/* /usr/lib/
+# Copy built dependencies and OpenImpala from the builder stage
+COPY --from=builder /usr/local /usr/local
+COPY --from=builder /opt/hdf5 /opt/hdf5
+COPY --from=builder /opt/amrex /opt/amrex
+COPY --from=builder /opt/hypre /opt/hypre
+COPY --from=builder /opt/openImpala /opt/openImpala
 
+# Define arguments and environment variables for runtime
+ARG HDF5_VERSION
+ARG AMREX_VERSION
+ARG HYPRE_VERSION
+ARG OPENIMPALA_DIR=/opt/openImpala
 
-WORKDIR /src
-    #
-    # --- install hypre
-RUN    git clone https://github.com/hypre-space/hypre.git
-WORKDIR hypre/src 
-RUN       ./configure && \
-       make && \
-       make install && \
-       cp -r /src/hypre/src/hypre/include /usr/include/hypre && \
-       cp -r /src/hypre/src/hypre/lib/* /usr/lib
+ENV HDF5_HOME=/opt/hdf5/${HDF5_VERSION}
+ENV AMREX_HOME=/opt/amrex/${AMREX_VERSION}
+ENV HYPRE_HOME=/opt/hypre/${HYPRE_VERSION}
+ENV OPENIMPALA_DIR=${OPENIMPALA_DIR}
 
-WORKDIR /
-  
-RUN    rm -rf /src
+# Add binaries to PATH (OpenMPI, HDF5 tools, OpenImpala apps/tests)
+ENV PATH=${HDF5_HOME}/bin:/usr/local/bin:${OPENIMPALA_DIR}/build/apps:${OPENIMPALA_DIR}/build/tests:${PATH}
 
-    #
-    # --- install OpenImpala
-RUN    git clone https://github.com/kramergroup/openImpala.git
-WORKDIR openImpala 
-RUN    make
+# Add libraries to LD_LIBRARY_PATH
+ENV LD_LIBRARY_PATH=${HDF5_HOME}/lib:${AMREX_HOME}/lib:${HYPRE_HOME}/lib:/usr/local/lib:${LD_LIBRARY_PATH}
 
-WORKDIR /
+# Set CMAKE_PREFIX_PATH (may be useful if other tools interact with this container)
+ENV CMAKE_PREFIX_PATH=${HDF5_HOME}:${AMREX_HOME}:${HYPRE_HOME}:/usr/local:${CMAKE_PREFIX_PATH}
 
-#============================================================#
-# environment: PATH, LD_LIBRARY_PATH, etc.
-#============================================================#
+# MPI runtime tuning (optional, same as Singularity recipe)
+ENV OMPI_MCA_btl_vader_single_copy_mechanism=none
+ENV OMPI_MCA_rmaps_base_oversubscribe=1
 
-ENV OPENMPI_VERSION=3.1.4
-ENV OPENIMPALA_VERSION=1.0.0
-ENV PATH=/opt/openmpi/${OPENMPI_VERSION}/bin:$PATH
-
-
-ENV PATH=/opt/rh/devtoolset-9/root/usr/bin:${PATH}}
-ENV LD_LIBRARY_PATH=/opt/rh/devtoolset-9/root/usr/lib64:/opt/rh/devtoolset-9/root/usr/lib:${LD_LIBRARY_PATH}
-ENV LD_LIBRARY_PATH=/opt/rh/devtoolset-9/root/usr/lib64/dyninst:/opt/rh/devtoolset-9/root/usr/lib/dyninst:${LD_LIBRARY_PATH}
-ENV LD_LIBRARY_PATH=/usr/local/lib64:/usr/lib:${LD_LIBRARY_PATH}
-  
+# Set locale
 ENV LC_ALL=C
+ENV LANG=C
 
+# Update linker cache
+RUN ldconfig
+
+# Set default working directory
+WORKDIR /data
+
+# Default command (provides a shell)
+CMD ["bash"]
